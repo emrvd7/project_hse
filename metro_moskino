@@ -1,0 +1,32 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+import json
+import re
+
+#this code get information about metro stations of the Moskino buildings
+driver = webdriver.Chrome()
+link = 'https://mos-kino.ru/cinema/'
+
+
+
+driver = webdriver.Chrome()
+driver.get(link)
+raw = driver.page_source
+soup = BeautifulSoup(raw, "html.parser")
+
+
+
+metro_stations = []
+soup_metro_stations = soup.select(".metro")
+for item in soup_metro_stations:
+    metro_stations.append(item.get_text(strip=True))
+
+for i in range(len(metro_stations)):
+    metro_stations[i] = metro_stations[i].replace('●', '') 
+
+print(metro_stations)
+
+driver.quit()
