@@ -1,0 +1,9 @@
+import pandas as pd
+#here we delet duplicates in metro_infrastructure.csv
+df1 = pd.read_csv('/Users/egormorozov/Desktop/cinema/metro_infrastructureA.csv', encoding= 'utf-8')
+print(df1.shape)
+df1.drop_duplicates(inplace=True)
+print(df1.shape)
+
+
+df1.to_csv('/Users/egormorozov/Desktop/cinema/metro_infrastructure.csv', index=False)
