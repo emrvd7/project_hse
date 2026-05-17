@@ -1,0 +1,150 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+import json
+import re
+import pandas as pd
+
+
+
+
+
+#here we get the list of dates
+list_numbers15_31 = list(range(15, 32))
+dates = []
+for el2 in list_numbers15_31:
+    dates.append(f'2026-05-{el2}')
+
+
+
+
+
+
+
+
+
+
+#this function extracts main information about film
+def extractor_to_list_of_dict(html_info_about_onefilm_in_one_cinema, time_of_show):
+     l = []
+     one_film_raw = html_info_about_onefilm_in_one_cinema
+
+     #print(one_film_raw.select('.title'))
+     #print(one_film_raw.select_one('.title').get_text(' ').strip())
+     #text = one_film_raw.select_one('.title').get_text(' ').strip()
+     
+     title_div = one_film_raw.select_one(".title")
+     name = title_div.contents[0].strip()
+     meta = title_div.select_one("small").get_text(strip=True)
+     year, length, country, age = [x.strip() for x in meta.split("/")]
+     length = length.replace("мин", "").strip()
+     
+     
+
+     for i in range(len(one_film_raw.select('.time'))):
+         one_film_data = {}
+         one_film_data['name'] = name
+         one_film_data['date'] = time_of_show
+         one_film_data['year_of_production']= year
+         one_film_data['length_min'] = length
+         try :
+             one_film_data['length_min'] = int(one_film_data['length_min'])
+
+         except ValueError:
+             pass
+         one_film_data['age_restriction'] = age
+         one_film_data['country'] = country
+         one_film_data['time'] = one_film_raw.select('.time')[i].get_text()
+         one_film_data['price'] = one_film_raw.select('.price')[i].get_text().replace(' P', '')
+         try :
+             one_film_data['price'] = int(one_film_data['price'])
+
+         except ValueError:
+             pass
+         l.append(one_film_data)
+
+     return l
+
+
+
+
+
+
+
+films_info_schedule = []
+
+
+
+#here we apply the previous function to the timetable of films 15th-31th of May
+driver = webdriver.Chrome()
+print(dates)
+for date_el in dates:
+    
+    driver.get(f'https://mos-kino.ru/schedule/?date={date_el}')
+    WebDriverWait(driver, 10).until(
+
+    EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".schedule-item"))
+
+)
+
+
+    raw_schedule = driver.page_source
+    soup_schedule= BeautifulSoup(raw_schedule, "html.parser")
+    list_of_content_in_cinemas = list(soup_schedule.select('.content'))
+    
+    
+    
+
+
+    for i in range(len(list_of_content_in_cinemas)):
+         
+         for j in range(len(soup_schedule.select('.content')[i].select('.schedule-item'))):
+             one_film_data = extractor_to_list_of_dict(soup_schedule.select('.content')[i].select('.schedule-item')[j], date_el)
+
+             films_info_schedule += one_film_data
+
+print(films_info_schedule)
+driver.quit()
+
+
+
+df111 = pd.DataFrame(films_info_schedule)
+df111.to_csv('/Users/egormorozov/Desktop/movies.csv', index=False)
+
+             
+             
+         
+    
+    
+    
+
+
+    
+
+
+
+
+#it is the reference of html responce for one film in one cinema 
+'''''
+<div class="schedule-item">
+<div class="title">
+                                                        Вот это драма!                                                  <small>2026 / 106 мин / США / 18+</small>
+</div>
+<div class="list">
+<a class="subitem" href="javascript:ticketManager.richSession(130022934)">
+<span class="time">15:25</span>
+<span class="badge">2D</span>
+<span class="badge">СУБ</span>
+<span class="price">550 P</span>
+</a>
+<a class="subitem" href="javascript:ticketManager.richSession(130022936)">
+<span class="time">19:45</span>
+<span class="badge">2D</span>
+<span class="price">650 P</span>
+</a>
+</div>
+</div>
+'''
+
