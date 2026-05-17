@@ -1,0 +1,11 @@
+import pandas as pd
+
+#here we normalize infrastructure amounts so that they would better represent the data, then i will use this data to build maps using kepler website
+df = df = pd.read_csv('/Users/egormorozov/Desktop/cinema/metro_infrastructure.csv', encoding="utf-8")
+
+df["infra_norm"] = (
+    (df["amount_infrastructure"] - df["amount_infrastructure"].min()) /
+    (df["amount_infrastructure"].max() - df["amount_infrastructure"].min()))
+
+
+df.to_csv("/Users/egormorozov/Desktop/cinema/moscow_kepler.csv", index=False)
