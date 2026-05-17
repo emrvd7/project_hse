@@ -1,0 +1,78 @@
+import requests 
+import pandas as pd
+from bs4 import BeautifulSoup
+import json
+import re
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+import json
+import re
+
+#here we parse HSE website to get addresses of its buildings
+driver = webdriver.Chrome()
+
+driver.get('https://www.hse.ru/buildinghse/list')
+
+
+data_raw = driver.page_source
+
+data_soup = BeautifulSoup(data_raw, "html.parser")
+
+
+data_soup.find_all("h3", class_="with-indent2", id=True)
+
+raw_list = data_soup.find_all("h3", class_="with-indent2", id=True)
+address_list = []
+
+for el in raw_list:
+    one_dict = {'address' : ''}
+    for tag in el.find_all(["a", "span"]):
+        tag.decompose()
+
+    address = el.get_text(' ', strip=True)
+    one_dict['address'] = address
+    address_list.append(one_dict)
+
+df1 = pd.DataFrame(address_list)
+
+
+
+
+
+#here we get coordinates of HSE buildings using yandex service geocoder
+def geocode_yandex(address):
+    url = "https://geocode-maps.yandex.ru/1.x/"
+
+    params = {
+        "geocode": address,
+        "format":"json",
+        "apikey": 'here i purposely deleted my real api key'}
+    
+
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+        print(response.status_code)
+        pos = data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]["Point"]["pos"]
+        lon, lat = map(float, pos.split())
+        print(lat, lon)
+        return pd.Series([lat, lon])
+
+    except:
+        return pd.Series([None, None])
+    
+
+
+df1[['latitude', 'longitude']] = df1['address'].apply(geocode_yandex)
+
+
+
+df1.to_csv('/Users/egormorozov/Desktop/cinema/hse.csv', index=False)
+
+
+
+    
+
