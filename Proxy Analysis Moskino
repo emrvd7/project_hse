@@ -1,0 +1,209 @@
+import pandas as pd
+import numpy as np
+import re
+import seaborn as sns
+import matplotlib.pyplot as plt
+df_moskino = pd.read_csv('/Users/egormorozov/Desktop/cinema/moskino_data15-31.csv',  encoding='utf-8')
+#print(df_moskino.dtypes)
+
+
+
+
+class column_cleaner:
+    def __init__(self, df, col_name):
+        self.df = df
+        self.col = col_name
+
+    def float_er(self):
+        self.df[self.col] = pd.to_numeric(self.df[self.col], errors="coerce")
+        return self
+
+
+    def fillna_er(self, value):
+        self.df[self.col] = self.df[self.col].fillna(value)
+        return self
+    
+class df_wrapper:
+    def __init__(self, df):
+        self.df = df
+
+    def col_er(self, col_name):
+        return column_cleaner(self.df, col_name)
+    
+df_moskino_in_class = df_wrapper(df_moskino)
+
+df_moskino_in_class.col_er('price').float_er()
+df_moskino_in_class.col_er('length_min').float_er()
+df_moskino_in_class.col_er('year_of_production').float_er()
+
+
+
+
+print(df_moskino.describe())
+
+#print(df_moskino["price"].corr(df_moskino["length_min"]))
+#print(df_moskino[df_moskino['country'] != 'Россия'].describe())
+#print(df_moskino[df_moskino['country'] == 'Россия'].describe())
+#print(df_moskino[(df_moskino['year_of_production'] <= 2000)].describe())
+#print(df_moskino["year_of_production"].corr(df_moskino["length_min"]))
+#print(df_moskino["year_of_production"].corr(df_moskino["price"]))
+
+print(df_moskino["price"].corr(df_moskino["length_min"]))
+print(df_moskino[df_moskino["year_of_production"] <= 2024 ]["price"].corr(df_moskino["length_min"]))
+print(df_moskino[df_moskino["year_of_production"] >= 2024 ]["price"].corr(df_moskino["length_min"]))
+
+
+
+df_moskino_no_nan = df_moskino[(df_moskino["price"].notna()) & (df_moskino["length_min"].notna()) & (df_moskino["year_of_production"].notna())]
+
+df = df_moskino_no_nan[df_moskino["year_of_production"] <= 2024 ].copy()
+df["bin"] = pd.cut(df["length_min"], bins=10)
+
+mean_prices = df.groupby("bin")["price"].mean()
+mean_length = df.groupby("bin")["length_min"].mean()
+
+plt.figure(figsize=(8,5))
+
+plt.plot(mean_length, mean_prices, marker="o")
+
+plt.title("Average Price and Film Length <= 2024")
+plt.xlabel("Length in min")
+plt.ylabel("Average Price")
+plt.show()
+
+
+
+
+
+df = df_moskino_no_nan[df_moskino["year_of_production"] >= 2024 ].copy()
+df["bin"] = pd.cut(df["length_min"], bins=10)
+
+mean_prices = df.groupby("bin")["price"].mean()
+mean_length = df.groupby("bin")["length_min"].mean()
+
+plt.figure(figsize=(8,5))
+
+plt.plot(mean_length, mean_prices, marker="o")
+
+plt.title("Average Price and Film Length >= 2024")
+plt.xlabel("Length in min")
+plt.ylabel("Average Price")
+plt.show()
+
+
+print(df_moskino[(df_moskino["year_of_production"] <= 2024 ) & (df_moskino["length_min"] >= 125)]["price"].corr(df_moskino[df_moskino["year_of_production"] <= 2024 ]["length_min"]))
+print(df_moskino[(df_moskino["year_of_production"] >= 2024) & (df_moskino["length_min"] >= 125) ]["price"].corr(df_moskino[df_moskino["year_of_production"] >= 2024 ]["length_min"]))
+
+
+print(df_moskino[(df_moskino["year_of_production"] <= 2024 ) & (df_moskino["length_min"] >= 150)]["price"].corr(df_moskino[df_moskino["year_of_production"] <= 2024 ]["length_min"]))
+print(df_moskino[(df_moskino["year_of_production"] >= 2024) & (df_moskino["length_min"] >= 150) ]["price"].corr(df_moskino[df_moskino["year_of_production"] >= 2024 ]["length_min"]))
+
+
+
+
+print(df_moskino[df_moskino["year_of_production"] <= 2024].describe())
+print(df_moskino[df_moskino["year_of_production"] >= 2024].describe())
+
+i = 46
+less2024_x = []
+less2024_cor_list = []
+
+df_less2024 = df_moskino[df_moskino["year_of_production"] <= 2024]
+
+while i < 281:
+    less2024_x.append(i)
+    filtered_less2024 = df_less2024[df_less2024["length_min"] >= i]
+    less2024_cor_list.append(filtered_less2024["price"].corr(filtered_less2024["length_min"]))
+
+    i += 1
+print(less2024_cor_list)
+
+
+
+plt.figure(figsize=(8,5))
+
+plt.plot(less2024_x, less2024_cor_list, marker="o")
+
+plt.title("Correlation between price and length for films released before 2024")
+plt.xlabel("Minimum film length threshold")
+plt.ylabel("Correlation between price and length")
+
+plt.axhline(0, color="black", linewidth=1)
+
+plt.show()
+
+
+
+
+
+
+i = 11
+great2024_x = []
+great2024_cor_list = []
+
+df_great2024 = df_moskino[df_moskino["year_of_production"] >= 2024]
+
+while i < 200:
+    great2024_x.append(i)
+    filtered_great2024 = df_great2024[df_great2024["length_min"] >= i]
+    great2024_cor_list.append(filtered_great2024["price"].corr(filtered_great2024["length_min"]))
+
+    i += 1
+print(great2024_cor_list)
+
+plt.figure(figsize=(8,5))
+
+plt.plot(great2024_x, great2024_cor_list, marker="o")
+
+plt.title("Correlation between price and length for films released after 2024)")
+plt.xlabel("Minimum film length threshold")
+plt.ylabel("Correlation (price vs length)")
+
+plt.axhline(0, color="black", linewidth=1)
+
+plt.show()
+
+
+
+
+
+
+
+
+
+df_moskino['time'] =pd.to_datetime(df_moskino['time'], format="%H:%M")
+df_moskino["hour"] = pd.to_datetime(df_moskino["time"], format="%H:%M").dt.hour
+
+counts = df_moskino["hour"].value_counts().sort_index()
+
+counts.plot(kind="bar", figsize=(10,5))
+
+plt.xlabel("Hour")
+
+plt.ylabel("Number of films")
+
+plt.show()
+df_moskino["age_restriction"] = df_moskino["age_restriction"].str.replace('+', '')
+df_moskino["age_restriction"] = df_moskino["age_restriction"].str.strip()
+df_moskino_in_class.col_er('age_restriction').float_er()
+df_moskino.to_csv("/Users/egormorozov/Desktop/cinema/cleaned_moskino.csv", index=False)
+
+counts = df_moskino[(df_moskino['age_restriction'] >= 18) & ((df_moskino['year_of_production'] <= 2024) | (df_moskino['country'] != 'Россия'))]["hour"].value_counts().sort_index()
+
+counts.plot(kind="bar", figsize=(10,5))
+
+plt.xlabel("Hour")
+
+plt.ylabel("Number of films")
+
+plt.show()
+
+
+
+
+'''
+Предпосылка: Москино крупная и известная сеть кинотеатров, работающая как на масслвую, так и на более узкие аудитории. 
+Там показываю как мейнстримные фильма, так и старые малоизвестные картины. 
+Предполагается, что они при построении своей бизнес модели провели анализ аудитории и мы можем использовать их данные как прокси для анализа аудитории и вещей с ней связанных для рассматриваемого проекта.
+
+'''
