@@ -1,0 +1,198 @@
+import pandas as pd
+import numpy as np
+import re
+import seaborn as sns
+import matplotlib.pyplot as plt
+import folium 
+from folium.plugins import HeatMap
+import plotly.express as px
+df_metro_inf = pd.read_csv('/Users/egormorozov/Desktop/cinema/metro_infrastructure.csv',  encoding='utf-8')
+print(df_metro_inf.dtypes)
+
+
+df_hse = pd.read_csv('/Users/egormorozov/Desktop/cinema/hse.csv',  encoding='utf-8')
+print(df_hse.dtypes)
+
+
+
+
+
+m_metro_inf = folium.Map(location=[55.7558, 37.6173], zoom_start=11)
+
+heat_data = df_metro_inf[["latitude","longitude" , "amount_infrastructure"]].values.tolist()
+
+HeatMap(heat_data).add_to(m_metro_inf)
+
+m_metro_inf.save('/Users/egormorozov/Desktop/cinema/map_metro_inf.html')
+
+
+
+
+
+
+def haversine_formula(lat_metro, lon_metro, lat_moscow=55.7558, lon_moscow=37.6173):
+    R = 6371 
+
+    lat_metro, lon_metro, lat_moscow, lon_moscow = map(np.radians, [lat_metro, lon_metro, lat_moscow, lon_moscow])
+
+    delta_lat = lat_moscow - lat_metro
+    delta_lon = lon_moscow - lon_metro
+
+    a = np.sin(delta_lat/2)**2 + np.cos(lat_metro)*np.cos(lat_moscow)*np.sin(delta_lon/2)**2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+    return R * c
+
+
+df_metro_inf['distance_to_center'] = df_metro_inf.apply(lambda row: haversine_formula(row['latitude'], row["longitude"]), axis=1)
+
+
+print(df_metro_inf["amount_infrastructure"].corr(df_metro_inf["distance_to_center"]))
+
+
+
+df_metro_inf["distance_bin"] = pd.cut(
+    df_metro_inf["distance_to_center"], bins=np.arange(0, df_metro_inf["distance_to_center"].max() + 2, 2))
+
+
+
+grouped = df_metro_inf.groupby("distance_bin")["amount_infrastructure"].mean()
+
+x = grouped.index.map(lambda x: x.left)
+y = grouped.values
+plt.figure(figsize=(8,5))
+
+plt.plot(x, y, marker="o")
+
+plt.title("Infrastructure vs Distance from City Center")
+
+plt.xlabel("Distance from center (km)")
+
+plt.ylabel("Average infrastructure")
+
+plt.grid()
+
+plt.show()
+
+
+
+
+df_hse = pd.read_csv('/Users/egormorozov/Desktop/cinema/hse.csv',  encoding='utf-8')
+print(df_hse.dtypes)
+
+
+df_hse.dropna(subset=["latitude", "longitude"], inplace=True)
+
+
+
+metro_coord_list = []
+df_metro_inf[["latitude","longitude"]].to_dict()
+for  i in range(len(df_metro_inf[["latitude","longitude"]].to_dict()['longitude'])):
+    lst = []
+    lst.append(df_metro_inf[["latitude","longitude"]].to_dict()['latitude'][i])
+    lst.append(df_metro_inf[["latitude","longitude"]].to_dict()['longitude'][i])
+    metro_coord_list.append(lst)
+
+print(metro_coord_list)
+
+
+df_metro_inf['distance_to_center'] = df_metro_inf.apply(lambda row: haversine_formula(row['latitude'], row["longitude"]), axis=1)
+
+
+df_hse["closest_coords"] = None
+for i, row_hse in df_hse.iterrows():
+
+    min_dist = np.inf
+    best_lat, best_lon = [None, None]
+    
+
+    for j, row_metro_inf in df_metro_inf.iterrows():
+
+        dist = haversine_formula(
+            row_hse["latitude"], row_hse["longitude"],
+            row_metro_inf["latitude"], row_metro_inf["longitude"]
+        )
+
+        if dist < min_dist:
+            min_dist = dist
+            best_lat , best_lon= row_metro_inf["latitude"],  row_metro_inf["longitude"]
+
+    df_hse.at[i, "closest_coords"] = [best_lat, best_lon]
+    
+    df_hse.loc[i, "min_distance"] = min_dist
+
+
+
+
+
+for k, row_metro_inf in df_metro_inf.iterrows() :
+
+    
+    
+    flag = 0
+    for p, row_hse in df_hse.iterrows():
+        if [row_metro_inf[ "latitude"], row_metro_inf[ "longitude"]] == row_hse['closest_coords']:
+            flag += 1
+            
+        
+        
+
+        
+
+   
+    
+    df_metro_inf.loc[k, "hse_building"] = flag
+
+
+
+
+df_metro_inf_hse = df_metro_inf[df_metro_inf['hse_building'] != 0]
+df_metro_inf_no_hse = df_metro_inf[df_metro_inf['hse_building'] == 0]
+
+print(df_metro_inf["hse_building"].corr(df_metro_inf["amount_infrastructure"]))
+
+print(df_metro_inf_hse['amount_infrastructure'].mean())
+print(df_metro_inf_no_hse['amount_infrastructure'].mean())
+print(df_metro_inf['amount_infrastructure'].mean())
+
+groups = ["HSE", "No HSE", "All"]
+means = [df_metro_inf_hse["amount_infrastructure"].mean(), df_metro_inf_no_hse["amount_infrastructure"].mean(), df_metro_inf["amount_infrastructure"].mean()]
+
+plt.figure(figsize=(7,5))
+
+bars = plt.bar(groups, means)
+
+
+for bar in bars:
+
+    y = bar.get_height()
+
+    plt.text(
+
+        bar.get_x() + bar.get_width()/2,
+
+        y,
+
+        round(y, 2),
+
+        ha="center",
+
+        va="bottom"
+
+    )
+
+plt.ylabel("Average infrastructure amount")
+
+plt.title("HSE effect on infrastructure amount")
+
+plt.show()
+
+
+
+
+df_hse.to_csv("/Users/egormorozov/Desktop/cinema/blahse.csv", index=False)
+df_metro_inf.to_csv("/Users/egormorozov/Desktop/cinema/bla.csv", index=False)
+
+
+
+
